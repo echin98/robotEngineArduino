@@ -22,83 +22,111 @@ void setup(){
   pinMode(LEFT_OUT_PIN, OUTPUT);
   pinMode(RIGHT_OUT_PIN, OUTPUT);
   pinMode(WEAPON_OUT_PIN, OUTPUT);
+
+  pinMode(10, OUTPUT);
 	
 	attachInterrupt(digitalPinToInterrupt(TURN_PIN),updateTurn,CHANGE);
 	attachInterrupt(digitalPinToInterrupt(THROTTLE_PIN),updateThrottle,CHANGE);
 	attachInterrupt(digitalPinToInterrupt(WEAPON_PIN),updateWeapon,CHANGE);
-	Serial.begin(9600);
+	Serial.begin(115200);
+}
+
+int leftTemp;
+int rightTemp;
+unsigned long lastT = 0l;
+
+void updateVals(){
+  rightTemp = (curThrottle+curTurn);
+  leftTemp = -(curThrottle-curTurn);
+  
+  if(leftTemp>400l || rightTemp>400l){
+    leftTemp =(int)(leftTemp*(400.0l/ (abs(leftTemp)>abs(rightTemp)?abs(leftTemp):abs(rightTemp))));
+    rightTemp =(int)(rightTemp*(400.0l/ (abs(leftTemp)>abs(rightTemp)?abs(leftTemp):abs(rightTemp))));
+  }
+
+  if(leftTemp<-400l || rightTemp<-400l){
+    leftTemp =(int)(leftTemp*(400.0l/ (abs(leftTemp)>abs(rightTemp)?abs(leftTemp):abs(rightTemp))));
+    rightTemp =(int)(rightTemp*(400.0l/ (abs(leftTemp)>abs(rightTemp)?abs(leftTemp):abs(rightTemp))));
+  }
+
+  leftTemp += 1400l;
+  rightTemp += 1400l;
 }
 
 void loop(){
 
-  static unsigned long int lastT = 0;
-
-  static int leftTemp = 0;
-  static int rightTemp = 0;
+  leftTemp = 0l;
+  rightTemp = 0l;
   
-  if(millis()>lastT+20){
-    Serial.println(millis()-lastT);
-    lastT = millis();
-    rightTemp = (curThrottle+curTurn);
-    leftTemp = -(curThrottle-curTurn);
-    
-    if(leftTemp>400 || rightTemp>400){
-      leftTemp =(int)(leftTemp*(400.0/ (abs(leftTemp)>abs(rightTemp)?abs(leftTemp):abs(rightTemp))));
-      rightTemp =(int)(rightTemp*(400.0/ (abs(leftTemp)>abs(rightTemp)?abs(leftTemp):abs(rightTemp))));
-    }
+  int leftState = LOW;
+  int rightState = LOW;
+  int weaponState = LOW;
+  
+  updateVals();
 
-    if(leftTemp<-400 || rightTemp<-400){
-      leftTemp =(int)(leftTemp*(400.0/ (abs(leftTemp)>abs(rightTemp)?abs(leftTemp):abs(rightTemp))));
-      rightTemp =(int)(rightTemp*(400.0/ (abs(leftTemp)>abs(rightTemp)?abs(leftTemp):abs(rightTemp))));
-    }
-     
-    digitalWrite(LEFT_OUT_PIN, HIGH);
-    delayMicroseconds(1400+leftTemp);
-    digitalWrite(LEFT_OUT_PIN,LOW);
-    
-    digitalWrite(RIGHT_OUT_PIN, HIGH);
-    delayMicroseconds(1400+rightTemp);
-    digitalWrite(RIGHT_OUT_PIN,LOW);
-    
-    digitalWrite(WEAPON_OUT_PIN, HIGH);
-    delayMicroseconds(curWeapon);
-    digitalWrite(WEAPON_OUT_PIN,LOW);
+  unsigned long curMicros = micros();
+  lastT = curMicros;
+  long tstamp = curMicros-lastT;
 
-    Serial.print(leftTemp);
-    Serial.print("   ");
-    Serial.print(rightTemp);
-    Serial.print("   ");  
-    Serial.println(curWeapon);
+  static int test = LOW;
+  digitalWrite(10,test);
+  test = test==LOW?HIGH:LOW;
+  
+  while(tstamp<20000){
+    curMicros = micros();
+    tstamp = curMicros-lastT;
+    Serial.println(tstamp);
+
+    if(tstamp<leftTemp)
+      leftState = HIGH;
+    else
+      leftState = LOW;
+      
+    if(tstamp<rightTemp)
+      rightState = HIGH;
+    else
+      rightState = LOW;
+    
+    if(tstamp<curWeapon)
+      weaponState = HIGH;
+    else
+      weaponState = LOW;
+    
+    digitalWrite(LEFT_OUT_PIN, leftState);
+    digitalWrite(RIGHT_OUT_PIN, rightState);
+    digitalWrite(WEAPON_OUT_PIN, weaponState);
   }
-  
+  /*
+  Serial.print(leftTemp);
+  Serial.print("   ");
+  Serial.print(rightTemp);
+  Serial.print("   ");  
+  Serial.println(curWeapon);
+  */
 }
 
 void updateTurn(){
-	static unsigned long int start=0;
+	static unsigned long start=0;
 	if(digitalRead(TURN_PIN)){
 		start = micros();
 	}
 	else{
 		curTurn = micros()-start-1448;
-    if(curTurn>400) curTurn = 400;
-    else if(curTurn<-400) curTurn = -400;
 	}
 }
 		
 void updateThrottle(){
-	static unsigned long int start=0;
+	static unsigned long start=0;
 	if(digitalRead(THROTTLE_PIN)){
 		start = micros();
 	}
 	else{
 		curThrottle = micros()-start-1480;
-    if(curTurn>400) curTurn = 400;
-    else if(curTurn<-400) curTurn = -400;
 	}
 }
 
 void updateWeapon(){
-	static unsigned long int start=0;
+	static unsigned long start=0;
 	if(digitalRead(WEAPON_PIN)){
 		start = micros();
 	}
