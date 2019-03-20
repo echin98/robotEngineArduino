@@ -16,6 +16,15 @@ volatile int curTurn=0;
 volatile int curWeapon=0;
 volatile int curThrottle=0;
 
+unsigned long lastTurnTime=0;
+unsigned long lastThrottleTime=0;
+unsigned long lastWeaponTime=0;
+
+int leftTemp=1500;
+int rightTemp=1500;
+int weaponTemp=900;
+unsigned long lastT = 0l;
+
 void setup(){
 	pinMode(TURN_PIN, INPUT);
 	pinMode(THROTTLE_PIN, INPUT);
@@ -32,11 +41,6 @@ void setup(){
 	attachInterrupt(digitalPinToInterrupt(WEAPON_PIN),updateWeapon,CHANGE);
 	Serial.begin(115200);
 }
-
-int leftTemp=1500;
-int rightTemp=1500;
-int weaponTemp=900;
-unsigned long lastT = 0l;
 
 void updateVals(){
   int rightTempOld = rightTemp;
@@ -76,16 +80,28 @@ void updateVals(){
 }
 
 void loop(){
-  
-
   unsigned long curMicros = micros();
+  bool disabled = true;
   long tstamp = curMicros-lastT;
 
   static int test = LOW;
   digitalWrite(10,test);
   test = test==LOW?HIGH:LOW;
-  
-  if(tstamp>=20000){
+
+  if(curMicros-lastTurnTime > 40000 || 
+    curMicros-lastThrottleTime > 40000 ||
+    curMicros-lastWeaponTime > 40000){
+    disabled = true;
+  }
+  else{
+    disabled = false;
+  }
+  if(disabled){
+    digitalWrite(LEFT_OUT_PIN,LOW);
+    digitalWrite(RIGHT_OUT_PIN,LOW);
+    digitalWrite(WEAPON_OUT_PIN,LOW);
+  }
+  else if(tstamp>=20000){
     updateVals();
     lastT = curMicros;
     digitalWrite(LEFT_OUT_PIN,HIGH);
@@ -99,8 +115,6 @@ void loop(){
     digitalWrite(WEAPON_OUT_PIN,HIGH);
     delayMicroseconds(weaponTemp);
     digitalWrite(WEAPON_OUT_PIN, LOW);
-
-    
     
   }
   /*
@@ -113,31 +127,28 @@ void loop(){
 }
 
 void updateTurn(){
-	static unsigned long start=0;
 	if(digitalRead(TURN_PIN)){
-		start = micros();
+		lastTurnTime = micros();
 	}
 	else{
-		curTurn = micros()-start-1500;
+		curTurn = micros()-lastTurnTime-1500;
 	}
 }
 		
 void updateThrottle(){
-	static unsigned long start=0;
 	if(digitalRead(THROTTLE_PIN)){
-		start = micros();
+		lastThrottleTime = micros();
 	}
 	else{
-		curThrottle = micros()-start-1500;
+		curThrottle = micros()-lastThrottleTime-1500;
 	}
 }
 
 void updateWeapon(){
-	static unsigned long start=0;
 	if(digitalRead(WEAPON_PIN)){
-		start = micros();
+		lastWeaponTime = micros();
 	}
 	else{
-		curWeapon = micros()-start;
+		curWeapon = micros()-lastWeaponTime;
 	}
 }
