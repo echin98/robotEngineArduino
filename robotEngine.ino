@@ -9,7 +9,7 @@
 
 //slew rate limit, used as an acceleration limit on the wheels
 //might be a good idea to do this for weapon too, but not implemented
-#define SLEW_LIMIT 10.0
+#define SLEW_LIMIT 30.0
 
 //function declarations for interrupt functions
 void updateTurn();
@@ -84,12 +84,19 @@ void updateVals(){
   leftSlew = abs(leftSlew);
   int rightSlew = rightTempOld-rightTemp;
   rightSlew = abs(rightSlew);
-
+  
   //if it's excessive, limit it to SLEW_LIMIT
   if((leftSlew>rightSlew?leftSlew:rightSlew)>SLEW_LIMIT){
     leftTemp = (int)(leftTempOld+(SLEW_LIMIT*(leftTemp-leftTempOld)/(leftSlew>rightSlew?leftSlew:rightSlew)));
     rightTemp = (int)(rightTempOld+(SLEW_LIMIT*(rightTemp-rightTempOld)/(leftSlew>rightSlew?leftSlew:rightSlew)));
   }
+  Serial.print(curTurn);
+  Serial.print("   ");
+  Serial.print(curThrottle);
+  Serial.print("   ");
+  Serial.print(leftTemp);
+  Serial.print("   ");
+  Serial.println(rightTemp);
   
 }
 
@@ -100,9 +107,9 @@ void loop(){
   long tstamp = curMicros-lastT;
 
   //failsafe, checks to make sure that we have received a pulse from the radio in the last 40000 uS
-  if(curMicros-lastTurnTime > 40000 || 
-    curMicros-lastThrottleTime > 40000 ||
-    curMicros-lastWeaponTime > 40000){
+  if(curMicros-lastTurnTime > 30000 || 
+    curMicros-lastThrottleTime > 30000 ||
+    curMicros-lastWeaponTime > 30000){
     disabled = true;
   }
   else{
@@ -146,6 +153,8 @@ void updateTurn(){
 	}
 	else{
 		curTurn = micros()-lastTurnTime-1500;
+    if(abs(curTurn)>700)
+      curTurn = 0;
 	}
 }
 		
@@ -155,6 +164,8 @@ void updateThrottle(){
 	}
 	else{
 		curThrottle = micros()-lastThrottleTime-1500;
+   if(abs(curThrottle)>700)
+      curThrottle = 0;
 	}
 }
 
